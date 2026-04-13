@@ -44,8 +44,6 @@ import {
   getConfidence, getStatus, getRecommendation, getAdaptationStrategy,
 } from '@/lib/predictionModel'
 import { supabase } from '@/lib/supabase'
-import { auth } from '@/lib/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
 import { generateDashboardReport } from '@/lib/generateReport'
 import { Download } from 'lucide-react'
 
@@ -122,13 +120,6 @@ export default function DashboardPage() {
   const [lastPredictionResult, setLastPredictionResult] = useState<any>(null)
 
   const [economicView, setEconomicView] = useState<'avg'|'total'>('avg')
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) router.push('/login')
-    })
-    return () => unsubscribe()
-  }, [])
 
   useEffect(() => {
     async function fetchData() {
