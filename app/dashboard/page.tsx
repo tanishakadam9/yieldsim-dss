@@ -44,6 +44,8 @@ import {
   getConfidence, getStatus, getRecommendation, getAdaptationStrategy,
 } from '@/lib/predictionModel'
 import { supabase } from '@/lib/supabase'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged } from 'firebase/auth'
 import { generateDashboardReport } from '@/lib/generateReport'
 import { Download } from 'lucide-react'
 
@@ -122,22 +124,27 @@ export default function DashboardPage() {
   const [economicView, setEconomicView] = useState<'avg'|'total'>('avg')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.push('/login')
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) router.push('/login')
     })
+    return () => unsubscribe()
   }, [])
 
   useEffect(() => {
     async function fetchData() {
-      const { data, error } = await supabase
-        .from('climate_data')
-        .select('*')
-      if (data) {
-        setRawData(data)
-        console.log('Raw data count:', data.length)
-        console.log('Sample row:', data[0])
+      try {
+        const response = await fetch('/api/climate-data')
+        const data = await response.json()
+        if (data && !data.error) {
+          setRawData(data)
+          console.log('Raw data count:', data.length)
+          console.log('Sample row:', data[0])
+        }
+      } catch (err) {
+        console.error('Failed to load local climate data:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     fetchData()
   }, [])

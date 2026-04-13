@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Sun, Moon, User, LayoutDashboard, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { supabase } from '@/lib/supabase'
+import { auth } from '@/lib/firebase'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme()
@@ -13,13 +14,10 @@ export default function Navbar() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserEmail(session?.user?.email ?? null)
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUserEmail(user?.email ?? null)
     })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserEmail(session?.user?.email ?? null)
-    })
-    return () => listener.subscription.unsubscribe()
+    return () => unsubscribe()
   }, [])
 
   return (
@@ -41,9 +39,20 @@ export default function Navbar() {
       </div>
 
       <nav className="fixed top-0 left-0 right-0 h-20 glass z-50 border-b border-white/30 flex items-center justify-between px-6 md:px-12">
-        <div className="flex items-center gap-2">
-          <span className="text-4xl">🌾</span>
-          <span className="text-xl md:text-2xl font-playfair font-bold text-primary">YieldSim</span>
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
+            <span className="text-4xl">🌾</span>
+            <span className="text-xl md:text-2xl font-playfair font-bold text-primary">YieldSim</span>
+          </div>
+          
+          <div className="hidden md:flex items-center gap-6">
+            <button 
+              onClick={() => router.push('/analytics')}
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Dataset Analytics
+            </button>
+          </div>
         </div>
 
         {/* Right Side */}
@@ -96,7 +105,7 @@ export default function Navbar() {
                   {/* Sign out */}
                   <button
                     onClick={async () => {
-                      await supabase.auth.signOut()
+                      await signOut(auth)
                       setProfileOpen(false)
                       router.push('/login')
                     }}

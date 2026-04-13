@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { Moon, Sun, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { auth } from '@/lib/firebase'
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,9 +18,10 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/dashboard')
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) router.push('/dashboard')
     })
+    return () => unsubscribe()
   }, [])
 
   const handleLogin = async () => {
@@ -29,16 +31,13 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError('')
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    setLoading(false)
-    if (authError) {
-      setError(authError.message)
-    } else {
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
       router.push('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.')
     }
+    setLoading(false)
   }
 
   return (
