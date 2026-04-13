@@ -5,10 +5,22 @@ import { Slider } from '@/components/ui/slider'
 import { BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import { predictYield } from '@/lib/predictionModel'
+import { cropOptimalRanges } from '@/lib/dataset'
+
+const IMPACT_CROPS = ['Wheat', 'Corn', 'Soybeans', 'Rice'] as const
+type ImpactCrop = typeof IMPACT_CROPS[number]
+
+const cropColors: Record<ImpactCrop, string> = {
+  Wheat:    'from-red-500 to-orange-500',
+  Corn:     'from-orange-500 to-yellow-500',
+  Soybeans: 'from-red-600 to-orange-600',
+  Rice:     'from-green-500 to-emerald-500',
+}
 
 export default function ClimateSelector() {
   const router = useRouter()
-  const [temperature, setTemperature] = useState(0)
+  const [temperature, setTemperature] = useState(20)
   const [rainfall, setRainfall] = useState(1500)
   const [sunlight, setSunlight] = useState(10)
   const [co2, setCo2] = useState(420)
@@ -20,7 +32,7 @@ export default function ClimateSelector() {
       value: temperature,
       onChange: setTemperature,
       min: -5,
-      max: 10,
+      max: 45,
       unit: '°C',
     },
     {
@@ -52,6 +64,41 @@ export default function ClimateSelector() {
     },
   ]
 
+  // Compute impact bars using real prediction model
+  // Map the slider CO₂ ppm → MT approximation (÷ 10 for model input scale)
+  const co2MT = Math.round(co2 / 10)
+
+  const impactItems = IMPACT_CROPS.map((cropName) => {
+    const avg = cropOptimalRanges[cropName]?.avgYield ?? 2.24
+    let predicted: number
+    try {
+      const result = predictYield({
+        crop: cropName,
+        temperature,
+        precipitation: rainfall,
+        co2: co2MT,
+        soilHealth: 65,
+        irrigationAccess: 50,
+        fertilizerUse: 60,
+        adaptationStrategy: 'No Adaptation',
+      })
+      predicted = result.predictedYield
+    } catch {
+      predicted = avg
+    }
+    const impact = parseFloat(((predicted - avg) / avg * 100).toFixed(0))
+    return { crop: cropName, impact, color: cropColors[cropName] }
+  })
+
+  // Overall risk level: Low if all predictions >= avg, High if any < avg*0.7, else Medium
+  const predictions = impactItems.map(i => {
+    const avg = cropOptimalRanges[i.crop as ImpactCrop]?.avgYield ?? 2.24
+    return { avg, predicted: avg * (1 + i.impact / 100) }
+  })
+  const riskLevel =
+    predictions.some(p => p.predicted < p.avg * 0.7) ? 'High' :
+    predictions.every(p => p.predicted >= p.avg) ? 'Low' : 'Medium'
+
   return (
     <section className="py-20 px-6 md:px-12 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent -z-10" />
@@ -73,7 +120,7 @@ export default function ClimateSelector() {
                       {param.label}
                     </label>
                     <span className="font-space-mono text-xl font-bold text-primary">
-                      {param.value.toFixed(param.min >= 0 && param.max <= 100 ? 0 : 0)}
+                      {param.value.toFixed(0)}
                       {param.unit}
                     </span>
                   </div>
@@ -112,19 +159,14 @@ export default function ClimateSelector() {
               </h3>
             </div>
 
-            {/* Simple bar visualization */}
+            {/* Impact bars — driven by real prediction model */}
             <div className="space-y-6">
-              {[
-                { crop: 'Wheat', impact: temperature > 2 ? -25 : -15 + temperature * 2, color: 'from-red-500 to-orange-500' },
-                { crop: 'Corn', impact: rainfall < 1000 ? -20 : -5 + (rainfall - 1000) / 500, color: 'from-orange-500 to-yellow-500' },
-                { crop: 'Soybean', impact: temperature > 3 ? -22 : -10 + temperature, color: 'from-red-600 to-orange-600' },
-                { crop: 'Rice', impact: rainfall > 2000 ? 15 : -8 + (rainfall - 1000) / 200, color: 'from-green-500 to-emerald-500' },
-              ].map((item) => (
+              {impactItems.map((item) => (
                 <div key={item.crop}>
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium text-foreground">{item.crop}</span>
                     <span className={`font-space-mono font-bold ${item.impact > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {item.impact.toFixed(0)}%
+                      {item.impact > 0 ? '+' : ''}{item.impact}%
                     </span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
@@ -139,16 +181,16 @@ export default function ClimateSelector() {
               ))}
             </div>
 
-            {/* Risk levels */}
+            {/* Risk level card */}
             <div className="mt-8 p-4 rounded-lg bg-white/10 border border-white/20">
               <p className="text-sm text-muted-foreground mb-2">Overall Risk Level:</p>
               <div className="flex items-center gap-2">
-                {temperature > 3 || rainfall < 1000 ? (
+                {riskLevel === 'High' ? (
                   <>
                     <span className="text-red-500 text-lg">🔴</span>
                     <span className="font-bold text-red-600">High Risk</span>
                   </>
-                ) : temperature > 1 || rainfall < 1500 ? (
+                ) : riskLevel === 'Medium' ? (
                   <>
                     <span className="text-yellow-500 text-lg">🟡</span>
                     <span className="font-bold text-yellow-600">Medium Risk</span>

@@ -1,15 +1,26 @@
 'use client'
 
-import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from 'react'
+import { Sun, Moon, User, LayoutDashboard, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false)
+  const { theme, setTheme } = useTheme()
+  const [profileOpen, setProfileOpen] = useState(false)
   const router = useRouter()
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  const otherNavLinks = ['Crops', 'Climate', 'Analytics', 'About']
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserEmail(session?.user?.email ?? null)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null)
+    })
+    return () => listener.subscription.unsubscribe()
+  }, [])
 
   return (
     <>
@@ -35,71 +46,70 @@ export default function Navbar() {
           <span className="text-xl md:text-2xl font-playfair font-bold text-primary">YieldSim</span>
         </div>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Right Side */}
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push('/simulation')}
-            className="text-foreground hover:text-primary transition-colors font-medium"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="p-2 rounded-full glass border border-white/30 hover:border-primary/50 transition-all hover:scale-105"
+            aria-label="Toggle theme"
           >
-            Simulate
+            {theme === 'dark'
+              ? <Sun size={18} className="text-primary" />
+              : <Moon size={18} className="text-primary" />}
           </button>
-          {otherNavLinks.map((link) => (
-            <a
-              key={link}
-              href={`#${link.toLowerCase()}`}
-              className="text-foreground hover:text-primary transition-colors font-medium"
+
+          <div className="relative">
+            <button
+              onClick={() => setProfileOpen(!profileOpen)}
+              className="w-9 h-9 rounded-full glass border-2 border-primary/40 hover:border-primary transition-all hover:scale-105 flex items-center justify-center"
+              aria-label="User profile"
             >
-              {link}
-            </a>
-          ))}
-        </div>
+              <User size={16} className="text-primary" />
+            </button>
 
-        <div className="hidden md:block">
-          <Button
-            onClick={() => router.push('/simulation')}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6"
-          >
-            Run Simulation
-          </Button>
-        </div>
-
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden text-foreground"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-
-        {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="absolute top-20 left-0 right-0 bg-white/30 backdrop-blur-md border-b border-white/30 md:hidden">
-            <div className="flex flex-col p-4 gap-4">
-              <button
-                onClick={() => { router.push('/simulation'); setIsOpen(false) }}
-                className="text-foreground hover:text-primary transition-colors font-medium text-left"
-              >
-                Simulate
-              </button>
-              {otherNavLinks.map((link) => (
-                <a
-                  key={link}
-                  href={`#${link.toLowerCase()}`}
-                  className="text-foreground hover:text-primary transition-colors font-medium"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {link}
-                </a>
-              ))}
-              <Button
-                onClick={() => { router.push('/simulation'); setIsOpen(false) }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full w-full"
-              >
-                Run Simulation
-              </Button>
-            </div>
+            {profileOpen && (
+              <>
+                {/* Backdrop to close on outside click */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileOpen(false)}
+                />
+                {/* Dropdown */}
+                <div className="absolute right-0 top-12 z-50 glass rounded-2xl border border-white/30 shadow-xl p-2 min-w-48 animate-fade-in-up">
+                  {/* User info header */}
+                  <div className="px-3 py-2 mb-1 border-b border-white/20">
+                    <p className="font-medium text-foreground text-sm">
+                      {userEmail ? userEmail.split('@')[0] : 'My Account'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {userEmail ?? 'Not signed in'}
+                    </p>
+                  </div>
+                  {/* Dashboard link */}
+                  <button
+                    onClick={() => { setProfileOpen(false); router.push('/dashboard') }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-primary/10 transition-colors text-left"
+                  >
+                    <LayoutDashboard size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-foreground">Dashboard</span>
+                  </button>
+                  {/* Sign out */}
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut()
+                      setProfileOpen(false)
+                      router.push('/login')
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-red-500/10 transition-colors text-left"
+                  >
+                    <LogOut size={16} className="text-red-500" />
+                    <span className="text-sm font-medium text-red-500">Sign Out</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </nav>
     </>
   )

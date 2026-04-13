@@ -40,16 +40,20 @@ export const viewport: Viewport = {
   themeColor: '#2D6A4F',
 }
 
+import { ThemeProvider } from '@/components/theme-provider'
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${playfair.variable} ${dmSans.variable} ${spaceMono.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${dmSans.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <body className="font-dm-sans antialiased">
-        {children}
-        <Analytics />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )
