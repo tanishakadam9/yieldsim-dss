@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { savePrediction, getPredictions, getHistoricalData, getAlertThresholds, saveAlertThresholds } from '@/lib/db'
+// Removed database imports
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import SimulationBuilder from '@/components/simulation-builder'
@@ -43,7 +43,6 @@ import {
   type SimulationResult,
   getConfidence, getStatus, getRecommendation, getAdaptationStrategy,
 } from '@/lib/predictionModel'
-import { supabase } from '@/lib/supabase'
 import { generateDashboardReport } from '@/lib/generateReport'
 import { Download } from 'lucide-react'
 
@@ -181,13 +180,7 @@ export default function DashboardPage() {
   const [thresholds, setThresholds] = useState({ temperature_threshold: 35, rainfall_threshold: 50, moisture_threshold: 20 })
 
   useEffect(() => {
-    getHistoricalData().then(setHistoricalData)
-    getAlertThresholds().then(data => { 
-      if (data) {
-        setThresholds(data)
-        setSavedThresholds({ temp: data.temperature_threshold, rain: data.rainfall_threshold, soilHealth: data.moisture_threshold })
-      } 
-    })
+    // Database loading removed
   }, [])
 
     // old handlePredictYield removed
@@ -310,8 +303,8 @@ export default function DashboardPage() {
 
   // tempVsYield logic
   const compTempVsYield = filteredData.map(r => ({
-    x: parseFloat(r.average_temperature_c.toFixed(1)),
-    y: parseFloat(r.crop_yield_mt_per_ha.toFixed(2)),
+    x: Number(r.average_temperature_c),
+    y: Number(r.crop_yield_mt_per_ha),
     crop: r.crop_type
   }))
 
@@ -323,7 +316,7 @@ export default function DashboardPage() {
   // --- New Dashboard Section Computations ---
 
   const yearSummaries = yearsInRange.map(year => {
-    const rows = filteredData.filter(r => r.year === year)
+    const rows = filteredData.filter(r => Number(r.year) === year)
     if (!rows.length) return { year, avgYield: 0, avgEconomicImpact: 0, avgTemp: 0, totalProfit: 0, topCrop: '—', count: 0 }
 
     const avgYield = rows.reduce((s, r) => s + r.crop_yield_mt_per_ha, 0) / rows.length
@@ -353,7 +346,7 @@ export default function DashboardPage() {
 
   // Chart B1
   const yearlyProfitData = yearsInRange.map(year => {
-    const rows = filteredData.filter(r => r.year === year)
+    const rows = filteredData.filter(r => Number(r.year) === year)
     const avgProfit = rows.length
       ? rows.reduce((s, r) => s + calculateProfit(r), 0) / rows.length
       : 0
@@ -380,7 +373,7 @@ export default function DashboardPage() {
 
   // Chart C1
   const yearlyEconomicData = yearsInRange.map(year => {
-    const rows = filteredData.filter(r => r.year === year)
+    const rows = filteredData.filter(r => Number(r.year) === year)
     const avgImpact = rows.length
       ? rows.reduce((s, r) => s + r.economic_impact_million_usd, 0) / rows.length
       : 0
@@ -415,7 +408,7 @@ export default function DashboardPage() {
   const heatmapData = yearsInRange.map(year => {
     const entry: Record<string, any> = { year }
     countries.forEach(country => {
-      const rows = filteredData.filter(r => r.year === year && r.country === country)
+      const rows = filteredData.filter(r => Number(r.year) === year && r.country === country)
       entry[country] = rows.length
         ? parseFloat((rows.reduce((s, r) => s + r.economic_impact_million_usd, 0) / rows.length).toFixed(0))
         : null
@@ -457,6 +450,8 @@ export default function DashboardPage() {
 
     setLastPredictionInputs({ temperature: pTemp, precipitation: pPrecip, co2Emissions: pCo2, fertilizerUse: pFert, soilHealthIndex: pSoilHealth, irrigationAccess: pIrrigation, cropType: pCrop })
     setLastPredictionResult({ predictedYield: yieldValue, status, confidence, recommendation, adaptationStrategy: strategy })
+    
+    // savePrediction removed
   }
 
   const renderSection = () => {
@@ -960,18 +955,7 @@ export default function DashboardPage() {
                 }
                 setSavedThresholds(updated)
                 
-                await saveAlertThresholds({
-                  temperature_threshold: tempThreshold,
-                  rainfall_threshold: rainThreshold,
-                  moisture_threshold: soilHealthThreshold
-                })
-                
-                getAlertThresholds().then(data => { 
-                  if (data) {
-                    setThresholds(data)
-                    setSavedThresholds({ temp: data.temperature_threshold, rain: data.rainfall_threshold, soilHealth: data.moisture_threshold })
-                  } 
-                })
+                // saveAlertThresholds removed
               }}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8 py-3 text-base font-semibold"
             >

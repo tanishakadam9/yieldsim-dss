@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { saveSimulation, getSimulations } from '@/lib/db'
+// Removed database imports
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,7 +27,7 @@ export default function SimulationBuilder() {
   const [pastSimulations, setPastSimulations] = useState<any[]>([])
 
   useEffect(() => {
-    getSimulations().then(setPastSimulations)
+    // getSimulations removed
   }, [])
 
   const handleRunSimulation = async () => {
@@ -39,19 +39,7 @@ export default function SimulationBuilder() {
     })
     setResults(result)
 
-    await saveSimulation({
-      crop_type: selectedCrop,
-      temp_change: tempChange,
-      rainfall_change: rainfallChange,
-      soil_moisture_change: moistureChange,
-      humidity_change: humidityChange,
-      baseline_yield: result.baselineYield,
-      simulated_yield: result.simulatedYield,
-      impact_percent: result.changePercent,
-      impact_label: result.impact,
-      summary: result.summary,
-    })
-    getSimulations().then(setPastSimulations)
+    // saveSimulation removed
   }
 
   const sliders = [

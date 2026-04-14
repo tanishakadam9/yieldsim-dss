@@ -17,20 +17,20 @@ export async function GET() {
     // The CSV columns are: Year,Country,Crop_Type,Average_Temperature_C,Total_Precipitation_mm,CO2_Emissions_MT,Crop_Yield_MT_per_HA,Extreme_Weather_Events,Irrigation_Access_%,Pesticide_Use_KG_per_HA,Fertilizer_Use_KG_per_HA,Soil_Health_Index,Adaptation_Strategies,Economic_Impact_Million_USD
     // Supabase format usually expects lowercase with underscores.
     const mappedRecords = records.map((record: any) => ({
-      year: record['Year'],
+      year: Number(record['Year']),
       country: record['Country'],
       crop_type: record['Crop_Type'],
-      average_temperature_c: record['Average_Temperature_C'],
-      total_precipitation_mm: record['Total_Precipitation_mm'],
-      co2_emissions_mt: record['CO2_Emissions_MT'],
-      crop_yield_mt_per_ha: record['Crop_Yield_MT_per_HA'],
-      extreme_weather_events: record['Extreme_Weather_Events'],
-      irrigation_access_percent: record['Irrigation_Access_%'],
-      pesticide_use_kg_per_ha: record['Pesticide_Use_KG_per_HA'],
-      fertilizer_use_kg_per_ha: record['Fertilizer_Use_KG_per_HA'],
-      soil_health_index: record['Soil_Health_Index'],
+      average_temperature_c: Number(record['Average_Temperature_C']),
+      total_precipitation_mm: Number(record['Total_Precipitation_mm']),
+      co2_emissions_mt: Number(record['CO2_Emissions_MT']),
+      crop_yield_mt_per_ha: Number(record['Crop_Yield_MT_per_HA']),
+      extreme_weather_events: Number(record['Extreme_Weather_Events']),
+      irrigation_access_percent: Number(record['Irrigation_Access_%']),
+      pesticide_use_kg_per_ha: Number(record['Pesticide_Use_KG_per_HA']),
+      fertilizer_use_kg_per_ha: Number(record['Fertilizer_Use_KG_per_HA']),
+      soil_health_index: Number(record['Soil_Health_Index']),
       adaptation_strategies: record['Adaptation_Strategies'],
-      economic_impact_million_usd: record['Economic_Impact_Million_USD']
+      economic_impact_million_usd: Number(record['Economic_Impact_Million_USD'])
     }))
 
     return NextResponse.json(mappedRecords)
