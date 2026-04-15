@@ -6,7 +6,7 @@ export function generateDashboardReport(params: {
   generatedAt: string
   filters: {
     yearRange: string
-    selectedCrops: string[]
+    selectedCrops: string
     selectedCountry: string
   }
   inputParams?: {
@@ -54,7 +54,7 @@ export function generateDashboardReport(params: {
     head: [['Filter', 'Value']],
     body: [
       ['Year Range', params.filters.yearRange],
-      ['Crops Selected', params.filters.selectedCrops.join(', ')],
+      ['Crops Selected', params.filters.selectedCrops],
       ['Country', params.filters.selectedCountry],
     ],
     headStyles: { fillColor: [43, 106, 79] },

@@ -112,7 +112,7 @@ export default function DashboardPage() {
   const fiveYearGroups = ['1990-1994','1995-1999','2000-2004','2005-2009', '2010-2014','2015-2019','2020-2024']
   const [selectedYearRange, setSelectedYearRange] = useState('2020-2024')
   
-  const [selectedCrops, setSelectedCrops] = useState<string[]>(['Rice', 'Wheat', 'Corn'])
+  const [selectedCrops, setSelectedCrops] = useState('All')
   const [selectedCountry, setSelectedCountry] = useState('All')
 
   const [lastPredictionInputs, setLastPredictionInputs] = useState<any>(null)
@@ -258,8 +258,7 @@ export default function DashboardPage() {
     return rowYear >= startYear && rowYear <= endYear
   })
 
-  // When no crops are checked, default to showing all
-  const activeCrops = selectedCrops.length > 0 ? selectedCrops : availableCrops
+  const activeCrops = selectedCrops === 'All' ? availableCrops : [selectedCrops]
 
   const filteredData = filteredByYear
     .filter(r => activeCrops.includes(r.crop_type))
@@ -981,16 +980,14 @@ export default function DashboardPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-sm font-medium text-foreground">Crops:</span>
-              {availableCrops.map((c) => (
-                <label key={c} className="flex items-center gap-1 text-sm text-foreground cursor-pointer whitespace-nowrap">
-                  <input type="checkbox" checked={selectedCrops.includes(c)} onChange={(e) => {
-                    if (e.target.checked) setSelectedCrops(p => [...p, c])
-                    else setSelectedCrops(p => p.filter(x => x !== c))
-                  }} className="accent-primary rounded" /> {c}
-                </label>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">Crop:</span>
+              <Select value={selectedCrops} onValueChange={setSelectedCrops}>
+                <SelectTrigger className="glass border-white/30 rounded-xl text-foreground w-40"><SelectValue /></SelectTrigger>
+                <SelectContent className="glass border-white/30 rounded-xl">
+                  {['All', ...availableCrops].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">Country:</span>
