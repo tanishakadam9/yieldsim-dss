@@ -1,12 +1,15 @@
 'use client'
 
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Download } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
+import { useReport } from '@/lib/report-context'
+import { generateDashboardReport } from '@/lib/generateReport'
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+  const { reportData } = useReport()
 
   return (
     <>
@@ -51,6 +54,20 @@ export default function Navbar() {
 
         {/* Right Side */}
         <div className="flex items-center gap-3">
+          {reportData && (
+            <button
+              onClick={() => generateDashboardReport({
+                title: 'YieldSim DSS Comprehensive Report',
+                generatedAt: new Date().toLocaleString(),
+                ...reportData
+              })}
+              className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-all border border-primary/30 text-sm font-semibold"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">Download PDF</span>
+            </button>
+          )}
+
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-full glass border border-white/30 hover:border-primary/50 transition-all hover:scale-105"

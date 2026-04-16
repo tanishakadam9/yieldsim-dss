@@ -45,6 +45,7 @@ import {
 } from '@/lib/predictionModel'
 import { generateDashboardReport } from '@/lib/generateReport'
 import { Download } from 'lucide-react'
+import { useReport } from '@/lib/report-context'
 
 // ─── Real dataset historical records ─────────────────────────────────────────
 const historicalRows = [
@@ -105,6 +106,7 @@ function calculateProfit(row: {
 export default function DashboardPage() {
   const router = useRouter()
   const [active, setActive] = useState('overview')
+  const { setReportData } = useReport()
 
   const [rawData, setRawData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -179,10 +181,6 @@ export default function DashboardPage() {
   const [historicalData, setHistoricalData] = useState<any[]>([])
   const [thresholds, setThresholds] = useState({ temperature_threshold: 35, rainfall_threshold: 50, moisture_threshold: 20 })
 
-  useEffect(() => {
-    // Database loading removed
-  }, [])
-
     // old handlePredictYield removed
 
   const handleRunSimulation = () => {
@@ -235,6 +233,7 @@ export default function DashboardPage() {
   const avgYield = rawData.length
     ? (rawData.reduce((s, r) => s + r.crop_yield_mt_per_ha, 0) / rawData.length).toFixed(2)
     : '2.24'
+
 
   const datasetAvgTemp = rawData.length
     ? rawData.reduce((s, r) => s + r.average_temperature_c, 0) / rawData.length
@@ -311,6 +310,49 @@ export default function DashboardPage() {
     name: crop,
     value: filteredData.filter(r => r.crop_type === crop).length
   }))
+
+  const topCountryByYield = useMemo(() => {
+    return compYieldByCountry.length 
+      ? [...compYieldByCountry].sort((a, b) => b.yield - a.yield)[0]?.country ?? '—'
+      : '—'
+  }, [compYieldByCountry])
+
+  const topCropByYield = useMemo(() => {
+    return compCropDistribution.length
+      ? [...compCropDistribution].sort((a, b) => b.value - a.value)[0]?.name ?? '—'
+      : '—'
+  }, [compCropDistribution])
+
+  const avgEconomicImpactAll = useMemo(() => {
+    return filteredData.length
+      ? (filteredData.reduce((s, r) => s + r.economic_impact_million_usd, 0) / filteredData.length).toFixed(0)
+      : '50'
+  }, [filteredData])
+
+  useEffect(() => {
+    setReportData({
+      filters: { yearRange: selectedYearRange, selectedCrops, selectedCountry },
+      metrics: { avgTemperature: avgTemp, avgRainfall: avgRainfall as number, avgSoilHealth, avgYield },
+      climateAnalysisInputs: { temp: cTemp, rain: cRain, wind: cWind, humidity: cHumidity, moisture: cMoisture },
+      predictionInputs: lastPredictionInputs,
+      predictionResult: lastPredictionResult,
+      simulationResult: simResult,
+      recommendations: recs,
+      alerts: savedThresholds,
+      vizStats: {
+        avgYield,
+        avgTemp,
+        avgRainfall: String(avgRainfall),
+        avgEconomicImpact: `$${avgEconomicImpactAll}M`,
+        topCountry: topCountryByYield,
+        topCrop: topCropByYield,
+      },
+      yearlyYieldSummary: yearlyYieldData,
+      yieldByCountry: compYieldByCountry,
+      tableData: rawData.slice(-10)
+    })
+  }, [selectedYearRange, selectedCrops, selectedCountry, avgTemp, avgRainfall, avgSoilHealth, avgYield, cTemp, cRain, cWind, cHumidity, cMoisture, lastPredictionInputs, lastPredictionResult, simResult, recs, savedThresholds, avgEconomicImpactAll, topCountryByYield, topCropByYield, yearlyYieldData, compYieldByCountry, rawData, setReportData])
+
 
   // --- New Dashboard Section Computations ---
 
@@ -441,16 +483,45 @@ export default function DashboardPage() {
       irrigationAccess: pIrrigation,
       cropType: pCrop
     })
-    const yieldValue = typeof yieldValueObj === 'number' ? yieldValueObj : yieldValueObj.predictedYield;
+    const yieldValue = typeof yieldValueObj === 'number' ? yieldValueObj : (yieldValueObj as any).predictedYield;
     const confidence = getConfidence(yieldValue)
     const status = getStatus(yieldValue)
     const recommendation = getRecommendation({ yieldValue, temperature: pTemp, precipitation: pPrecip, soilHealthIndex: pSoilHealth, irrigationAccess: pIrrigation, cropType: pCrop })
     const strategy = getAdaptationStrategy({ temperature: pTemp, precipitation: pPrecip, soilHealthIndex: pSoilHealth })
 
-    setLastPredictionInputs({ temperature: pTemp, precipitation: pPrecip, co2Emissions: pCo2, fertilizerUse: pFert, soilHealthIndex: pSoilHealth, irrigationAccess: pIrrigation, cropType: pCrop })
-    setLastPredictionResult({ predictedYield: yieldValue, status, confidence, recommendation, adaptationStrategy: strategy })
+    // UI-specific properties
+    const suitability = yieldValue >= 2.0 ? 'Suitable' : 'Not Recommended'
+    const riskLevel = yieldValue < 1.5 ? 'High' : yieldValue < 2.2 ? 'Medium' : 'Low'
     
-    // savePrediction removed
+    // Simulate factors breakdown for UI
+    const factors = [
+      { label: 'Climate Sync', score: Math.round(75 + (Math.random() * 15)), impact: 'positive' as const },
+      { label: 'Soil Health', score: Math.round(pSoilHealth), impact: pSoilHealth > 50 ? 'positive' as const : 'negative' as const },
+      { label: 'Water Access', score: Math.round(pIrrigation), impact: pIrrigation > 40 ? 'positive' as const : 'negative' as const }
+    ]
+
+    const result = { 
+      predictedYield: yieldValue, 
+      status, 
+      confidence, 
+      recommendation, 
+      adaptationStrategy: strategy,
+      suitability,
+      riskLevel,
+      factors
+    }
+
+    setYieldResult(result)
+    setLastPredictionInputs({ 
+      temperature: pTemp, 
+      precipitation: pPrecip, 
+      co2Emissions: pCo2, 
+      fertilizerUse: pFert, 
+      soilHealthIndex: pSoilHealth, 
+      irrigationAccess: pIrrigation, 
+      cropType: pCrop 
+    })
+    setLastPredictionResult(result)
   }
 
   const renderSection = () => {

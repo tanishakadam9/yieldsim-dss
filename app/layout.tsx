@@ -41,6 +41,7 @@ export const viewport: Viewport = {
 }
 
 import { ThemeProvider } from '@/components/theme-provider'
+import { ReportProvider } from '@/lib/report-context'
 
 export default function RootLayout({
   children,
@@ -50,10 +51,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${dmSans.variable} ${spaceMono.variable}`} suppressHydrationWarning>
       <body className="font-dm-sans antialiased">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-          <Analytics />
-        </ThemeProvider>
+        <ReportProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            {children}
+            <Analytics />
+          </ThemeProvider>
+        </ReportProvider>
       </body>
     </html>
   )
