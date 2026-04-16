@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 // Removed database imports
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
@@ -103,9 +103,16 @@ function calculateProfit(row: {
 }
 
 // ─── Dashboard component ──────────────────────────────────────────────────────
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter()
-  const [active, setActive] = useState('overview')
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const active = tabParam || 'overview'
+
+  const setActive = (id: string) => {
+    router.push(`/dashboard?tab=${id}`)
+  }
+  
   const { setReportData } = useReport()
 
   const [rawData, setRawData] = useState<any[]>([])
@@ -218,8 +225,8 @@ export default function DashboardPage() {
   const analysisLineData = months.map((m,i) => ({ month: m, Rainfall: climateCharts.rain * (0.5 + Math.abs(Math.sin(i))*0.8) }))
 
 
-  const availableCrops = rawData.length ? [...new Set(rawData.map(r => r.crop_type))].sort() : ['Barley', 'Coffee', 'Corn', 'Cotton', 'Fruits', 'Rice', 'Soybeans', 'Sugarcane', 'Vegetables', 'Wheat']
-  const availableCountries = rawData.length ? [...new Set(rawData.map(r => r.country))].sort() : ['Argentina', 'Australia', 'Brazil', 'Canada', 'China', 'France', 'India', 'Nigeria', 'Russia', 'USA']
+  const availableCrops = useMemo(() => rawData.length ? [...new Set(rawData.map(r => r.crop_type))].sort() : ['Barley', 'Coffee', 'Corn', 'Cotton', 'Fruits', 'Rice', 'Soybeans', 'Sugarcane', 'Vegetables', 'Wheat'], [rawData])
+  const availableCountries = useMemo(() => rawData.length ? [...new Set(rawData.map(r => r.country))].sort() : ['Argentina', 'Australia', 'Brazil', 'Canada', 'China', 'France', 'India', 'Nigeria', 'Russia', 'USA'], [rawData])
 
   const avgTemp = rawData.length
     ? (rawData.reduce((s, r) => s + r.average_temperature_c, 0) / rawData.length).toFixed(1)
@@ -251,17 +258,17 @@ export default function DashboardPage() {
     rainfall: Math.round(datasetAvgRain * (0.4 + Math.abs(Math.sin(i * Math.PI / 6)) * 1.8))
   }))
 
-  const [startYear, endYear] = selectedYearRange.split('-').map(Number)
-  const filteredByYear = rawData.filter(r => {
+  const [startYear, endYear] = useMemo(() => selectedYearRange.split('-').map(Number), [selectedYearRange])
+  const filteredByYear = useMemo(() => rawData.filter(r => {
     const rowYear = Number(r.year) // force number comparison
     return rowYear >= startYear && rowYear <= endYear
-  })
+  }), [rawData, startYear, endYear])
 
-  const activeCrops = selectedCrops === 'All' ? availableCrops : [selectedCrops]
+  const activeCrops = useMemo(() => selectedCrops === 'All' ? availableCrops : [selectedCrops], [selectedCrops, availableCrops])
 
-  const filteredData = filteredByYear
+  const filteredData = useMemo(() => filteredByYear
     .filter(r => activeCrops.includes(r.crop_type))
-    .filter(r => selectedCountry === 'All' || r.country === selectedCountry)
+    .filter(r => selectedCountry === 'All' || r.country === selectedCountry), [filteredByYear, activeCrops, selectedCountry])
 
   const yearsInRange = useMemo(() => {
     const [start, end] = selectedYearRange.split('-').map(Number)
@@ -553,6 +560,9 @@ export default function DashboardPage() {
                 metrics: { avgTemperature: avgTemp, avgRainfall: avgRainfall as number, avgSoilHealth, avgYield },
                 predictionResult: lastPredictionResult,
                 tableData: rawData.slice(-10),
+                yearSummaries,
+                countryProfitData,
+                countryEconomicData
               })}
               className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 py-2 flex items-center gap-2"
             >
@@ -1492,5 +1502,13 @@ export default function DashboardPage() {
         <Footer />
       </div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-background via-background to-[#E8DCC8] flex items-center justify-center p-8 text-xl font-playfair font-bold">Loading Dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }

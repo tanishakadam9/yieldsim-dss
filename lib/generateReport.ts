@@ -38,6 +38,11 @@ export function generateDashboardReport(params: {
   yearlyYieldSummary?: any[]
   yieldByCountry?: any[]
   tableData: any[]
+
+  // New Data Fields from Dashboard Additions
+  yearSummaries?: any[]
+  countryProfitData?: any[]
+  countryEconomicData?: any[]
 }) {
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -249,8 +254,63 @@ export function generateDashboardReport(params: {
         theme: 'grid',
         styles: { fontSize: 9 }
       })
+      currentY = (doc as any).lastAutoTable.finalY + 10
     }
   }
+
+  // 8. Agricultural & Economic Summaries
+  if (params.yearSummaries && params.yearSummaries.length > 0) {
+    if (currentY > 200) { doc.addPage(); currentY = 20; }
+    doc.setFontSize(14)
+    doc.setTextColor(43, 106, 79)
+    doc.text('8. Year-wise Agricultural Summary', 14, currentY)
+    
+    autoTable(doc, {
+      startY: currentY + 4,
+      head: [['Year', 'Avg Yield', 'Profit ($)', 'Econ Impact ($M)', 'Avg Temp', 'Top Crop']],
+      body: params.yearSummaries.map(s => [
+        s.year,
+        `${s.avgYield} MT/ha`,
+        `$${s.totalProfit}`,
+        `$${s.avgEconomicImpact}M`,
+        `${s.avgTemp}°C`,
+        s.topCrop
+      ]),
+      headStyles: { fillColor: [40, 90, 70] },
+      theme: 'grid',
+    })
+    currentY = (doc as any).lastAutoTable.finalY + 10
+  }
+
+  if (params.countryProfitData && params.countryProfitData.length > 0) {
+    if (currentY > 210) { doc.addPage(); currentY = 20; }
+    doc.setFontSize(14)
+    doc.text('9. Country-wise Profit Analysis', 14, currentY)
+    
+    autoTable(doc, {
+      startY: currentY + 4,
+      head: [['Country', 'Avg Profit Score ($)']],
+      body: params.countryProfitData.map(c => [c.country, `$${c.profit}`]),
+      headStyles: { fillColor: [70, 100, 140] },
+      theme: 'striped',
+    })
+    currentY = (doc as any).lastAutoTable.finalY + 10
+  }
+
+  if (params.countryEconomicData && params.countryEconomicData.length > 0) {
+    if (currentY > 210) { doc.addPage(); currentY = 20; }
+    doc.setFontSize(14)
+    doc.text('10. Country-wise Economic Impact', 14, currentY)
+    
+    autoTable(doc, {
+      startY: currentY + 4,
+      head: [['Country', 'Avg Impact ($M)', 'Total Impact ($M)']],
+      body: params.countryEconomicData.map(c => [c.country, `$${c.avgImpact}M`, `$${c.totalImpact}M`]),
+      headStyles: { fillColor: [140, 70, 70] },
+      theme: 'striped',
+    })
+  }
+
 
   // --- Footers ---
   const totalPages = (doc as any).internal.getNumberOfPages()
